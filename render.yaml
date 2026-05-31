@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: e-note
+    runtime: node
+    plan: starter
+    buildCommand: ""
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: e-note-data
+      mountPath: /var/data
+      sizeGB: 1

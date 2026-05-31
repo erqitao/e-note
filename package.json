@@ -1,0 +1,13 @@
+{
+  "name": "e-note",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A simple cloud note MVP with account login and synced notes.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>E-Note</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main id="app" class="shell">
+      <section class="auth-view" id="authView" hidden>
+        <div class="brand-panel">
+          <p class="eyebrow">E-Note</p>
+          <h1>个人云端笔记</h1>
+          <p class="brand-copy">登录后在任意电脑打开同一账号，即可继续编辑自己的笔记。</p>
+        </div>
+        <form class="auth-card" id="authForm">
+          <div class="auth-tabs" role="tablist" aria-label="账号操作">
+            <button class="tab active" type="button" data-mode="login">登录</button>
+            <button class="tab" type="button" data-mode="register">注册</button>
+          </div>
+          <label>
+            <span>邮箱</span>
+            <input id="emailInput" name="email" type="email" autocomplete="email" required />
+          </label>
+          <label id="nameField" hidden>
+            <span>昵称</span>
+            <input id="nameInput" name="name" type="text" autocomplete="name" />
+          </label>
+          <label>
+            <span>密码</span>
+            <input id="passwordInput" name="password" type="password" autocomplete="current-password" minlength="8" required />
+          </label>
+          <p class="form-error" id="authError" role="alert"></p>
+          <button class="primary-btn" id="authSubmit" type="submit">登录</button>
+        </form>
+      </section>
+
+      <section class="app-view" id="noteView" hidden>
+        <aside class="sidebar">
+          <div class="sidebar-head">
+            <div>
+              <p class="eyebrow">E-Note</p>
+              <h2>我的笔记</h2>
+            </div>
+            <button class="icon-btn" id="newNoteBtn" type="button" title="新建笔记" aria-label="新建笔记">+</button>
+          </div>
+          <div class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="searchInput" type="search" placeholder="搜索" />
+          </div>
+          <div class="notes-list" id="notesList" aria-label="笔记列表"></div>
+          <div class="account-bar">
+            <div>
+              <strong id="userName"></strong>
+              <span id="userEmail"></span>
+            </div>
+            <button class="ghost-btn" id="logoutBtn" type="button">退出</button>
+          </div>
+        </aside>
+
+        <section class="editor-panel">
+          <div class="editor-toolbar">
+            <input id="titleInput" class="title-input" type="text" placeholder="未命名笔记" />
+            <div class="toolbar-actions">
+              <span class="save-state" id="saveState">已保存</span>
+              <button class="ghost-btn danger" id="deleteNoteBtn" type="button">删除</button>
+            </div>
+          </div>
+          <textarea id="contentInput" class="content-input" placeholder="开始写点什么..."></textarea>
+          <div class="empty-state" id="emptyState" hidden>
+            <h2>还没有选择笔记</h2>
+            <button class="primary-btn" id="emptyNewNoteBtn" type="button">新建笔记</button>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
