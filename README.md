@@ -33,7 +33,31 @@ npm start
 
 前提是本机安装了 `npm`。
 
-## 云端部署
+## 腾讯云轻量服务器部署
+
+推荐使用腾讯云轻量应用服务器，中国香港地域。详细步骤见：
+
+[deploy/tencent-cloud.md](deploy/tencent-cloud.md)
+
+第一版使用文件数据库，服务器部署时建议把数据放到：
+
+```txt
+/var/www/e-note-data
+```
+
+项目已包含 PM2 配置：
+
+```txt
+ecosystem.config.cjs
+```
+
+以及 Nginx 示例：
+
+```txt
+deploy/nginx-e-note.conf
+```
+
+## 其他云端部署
 
 第一版使用文件数据库，因此部署平台必须支持持久化磁盘。部署时建议设置：
 
