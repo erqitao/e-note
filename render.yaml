@@ -3,7 +3,7 @@ services:
     name: e-note
     runtime: node
     plan: starter
-    buildCommand: ""
+    buildCommand: npm install
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
