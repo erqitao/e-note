@@ -9,6 +9,7 @@ const PUBLIC_DIR = path.join(ROOT, "public");
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
+const SECURE_COOKIES = process.env.SECURE_COOKIES === "true";
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -100,7 +101,7 @@ function parseCookies(req) {
 }
 
 function sessionCookie(token, maxAgeSeconds = SESSION_TTL_MS / 1000) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const secure = SECURE_COOKIES ? "; Secure" : "";
   return `session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(maxAgeSeconds)}${secure}`;
 }
 
