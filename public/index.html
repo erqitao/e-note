@@ -49,6 +49,13 @@
             <span aria-hidden="true">⌕</span>
             <input id="searchInput" type="search" placeholder="搜索" />
           </div>
+          <div class="sort-box" aria-label="笔记排序">
+            <span>排序</span>
+            <div class="sort-tabs" role="tablist" aria-label="笔记排序方式">
+              <button class="sort-tab active" id="sortUpdatedBtn" type="button" data-sort="updatedAt">修改</button>
+              <button class="sort-tab" id="sortCreatedBtn" type="button" data-sort="createdAt">创建</button>
+            </div>
+          </div>
           <div class="notes-list" id="notesList" aria-label="笔记列表"></div>
           <div class="account-bar">
             <div>

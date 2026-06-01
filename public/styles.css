@@ -201,8 +201,8 @@ label input {
 .sidebar {
   min-width: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 18px;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 14px;
   min-height: 100vh;
   padding: 22px;
   background: rgba(255, 253, 248, 0.88);
@@ -239,6 +239,41 @@ label input {
   padding: 0;
   border: 0;
   box-shadow: none;
+}
+
+.sort-box {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sort-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: #edf1ed;
+  border-radius: 8px;
+}
+
+.sort-tab {
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sort-tab.active {
+  background: #fff;
+  color: var(--accent-dark);
+  box-shadow: 0 1px 4px rgba(30, 37, 37, 0.08);
 }
 
 .notes-list {

@@ -4,6 +4,7 @@ const state = {
   notes: [],
   activeId: null,
   saveTimer: null,
+  sortBy: localStorage.getItem("noteSortBy") || "updatedAt",
   dirty: false
 };
 
@@ -27,6 +28,7 @@ const els = {
   emptyNewNoteBtn: $("#emptyNewNoteBtn"),
   notesList: $("#notesList"),
   searchInput: $("#searchInput"),
+  sortTabs: document.querySelectorAll(".sort-tab"),
   titleInput: $("#titleInput"),
   contentInput: $("#contentInput"),
   saveState: $("#saveState"),
@@ -87,12 +89,32 @@ function excerpt(note) {
   return text || "空白笔记";
 }
 
-function renderNotes() {
+function sortNotes(notes) {
+  return [...notes].sort((a, b) => {
+    const primary = new Date(b[state.sortBy]) - new Date(a[state.sortBy]);
+    if (primary !== 0) return primary;
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
+}
+
+function visibleNotes() {
   const keyword = els.searchInput.value.trim().toLowerCase();
-  const notes = state.notes.filter((note) => {
+  return sortNotes(state.notes.filter((note) => {
     const haystack = `${note.title} ${note.content}`.toLowerCase();
     return haystack.includes(keyword);
+  }));
+}
+
+function renderSortTabs() {
+  els.sortTabs.forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.sort === state.sortBy);
+    tab.setAttribute("aria-selected", String(tab.dataset.sort === state.sortBy));
   });
+}
+
+function renderNotes() {
+  const keyword = els.searchInput.value.trim().toLowerCase();
+  const notes = visibleNotes();
 
   els.notesList.innerHTML = "";
   if (!notes.length) {
@@ -115,7 +137,7 @@ function renderNotes() {
     `;
     button.children[0].textContent = note.title || "未命名笔记";
     button.children[1].textContent = excerpt(note);
-    button.children[2].textContent = formatDate(note.updatedAt);
+    button.children[2].textContent = formatDate(note[state.sortBy]);
     button.addEventListener("click", () => selectNote(note.id));
     els.notesList.append(button);
   }
@@ -142,6 +164,7 @@ function renderEditor() {
 }
 
 function render() {
+  renderSortTabs();
   renderNotes();
   renderEditor();
 }
@@ -149,7 +172,7 @@ function render() {
 async function loadNotes() {
   const data = await api("/api/notes");
   state.notes = data.notes;
-  state.activeId = state.notes[0]?.id || null;
+  state.activeId = visibleNotes()[0]?.id || null;
   state.dirty = false;
   render();
 }
@@ -202,7 +225,6 @@ async function saveActiveNote() {
     const index = state.notes.findIndex((item) => item.id === note.id);
     if (index >= 0) {
       state.notes[index] = data.note;
-      state.notes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
     }
     state.dirty = false;
     els.saveState.textContent = "已保存";
@@ -220,8 +242,15 @@ async function deleteActiveNote() {
   if (!ok) return;
   await api(`/api/notes/${note.id}`, { method: "DELETE" });
   state.notes = state.notes.filter((item) => item.id !== note.id);
-  state.activeId = state.notes[0]?.id || null;
+  state.activeId = visibleNotes()[0]?.id || null;
   state.dirty = false;
+  render();
+}
+
+function setSortBy(sortBy) {
+  if (!["updatedAt", "createdAt"].includes(sortBy)) return;
+  state.sortBy = sortBy;
+  localStorage.setItem("noteSortBy", sortBy);
   render();
 }
 
@@ -270,6 +299,7 @@ async function bootstrap() {
   els.newNoteBtn.addEventListener("click", createNote);
   els.emptyNewNoteBtn.addEventListener("click", createNote);
   els.searchInput.addEventListener("input", renderNotes);
+  els.sortTabs.forEach((tab) => tab.addEventListener("click", () => setSortBy(tab.dataset.sort)));
   els.titleInput.addEventListener("input", scheduleSave);
   els.contentInput.addEventListener("input", scheduleSave);
   els.deleteNoteBtn.addEventListener("click", deleteActiveNote);
