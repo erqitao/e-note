@@ -139,14 +139,15 @@ function renderFolders() {
 
   for (const folder of items) {
     const row = document.createElement("div");
-    row.className = `folder-row${folder.id === state.activeFolderId ? " active" : ""}`;
+    row.className = `folder-row${folder.locked ? " system" : " custom"}${folder.id === state.activeFolderId ? " active" : ""}`;
 
     const button = document.createElement("button");
     button.className = "folder-main";
     button.type = "button";
-    button.innerHTML = "<strong></strong><span></span>";
-    button.children[0].textContent = folder.name;
-    button.children[1].textContent = `${noteCountForFolder(folder.id)} 篇`;
+    button.innerHTML = "<span class=\"folder-icon\"></span><strong></strong><span class=\"folder-count\"></span>";
+    button.children[0].textContent = folder.locked ? "·" : "▸";
+    button.children[1].textContent = folder.name;
+    button.children[2].textContent = `${noteCountForFolder(folder.id)} 篇`;
     button.addEventListener("click", () => selectFolder(folder.id));
     row.append(button);
 
