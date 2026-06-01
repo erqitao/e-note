@@ -2,7 +2,9 @@ const state = {
   mode: "login",
   user: null,
   notes: [],
+  folders: [],
   activeId: null,
+  activeFolderId: localStorage.getItem("activeFolderId") || "all",
   saveTimer: null,
   sortBy: localStorage.getItem("noteSortBy") || "updatedAt",
   dirty: false
@@ -26,9 +28,12 @@ const els = {
   logoutBtn: $("#logoutBtn"),
   newNoteBtn: $("#newNoteBtn"),
   emptyNewNoteBtn: $("#emptyNewNoteBtn"),
+  newFolderBtn: $("#newFolderBtn"),
+  foldersList: $("#foldersList"),
   notesList: $("#notesList"),
   searchInput: $("#searchInput"),
   sortTabs: document.querySelectorAll(".sort-tab"),
+  folderSelect: $("#folderSelect"),
   titleInput: $("#titleInput"),
   contentInput: $("#contentInput"),
   saveState: $("#saveState"),
@@ -84,6 +89,14 @@ function activeNote() {
   return state.notes.find((note) => note.id === state.activeId) || null;
 }
 
+function folderById(id) {
+  return state.folders.find((folder) => folder.id === id) || null;
+}
+
+function currentFolderForNewNote() {
+  return folderById(state.activeFolderId) ? state.activeFolderId : null;
+}
+
 function excerpt(note) {
   const text = note.content.trim().replace(/\s+/g, " ");
   return text || "空白笔记";
@@ -101,8 +114,62 @@ function visibleNotes() {
   const keyword = els.searchInput.value.trim().toLowerCase();
   return sortNotes(state.notes.filter((note) => {
     const haystack = `${note.title} ${note.content}`.toLowerCase();
-    return haystack.includes(keyword);
+    const matchesKeyword = haystack.includes(keyword);
+    const matchesFolder =
+      state.activeFolderId === "all" ||
+      (state.activeFolderId === "unfiled" && !note.folderId) ||
+      note.folderId === state.activeFolderId;
+    return matchesKeyword && matchesFolder;
   }));
+}
+
+function noteCountForFolder(folderId) {
+  if (folderId === "all") return state.notes.length;
+  if (folderId === "unfiled") return state.notes.filter((note) => !note.folderId).length;
+  return state.notes.filter((note) => note.folderId === folderId).length;
+}
+
+function renderFolders() {
+  const items = [
+    { id: "all", name: "全部笔记", locked: true },
+    { id: "unfiled", name: "未归档", locked: true },
+    ...state.folders
+  ];
+  els.foldersList.innerHTML = "";
+
+  for (const folder of items) {
+    const row = document.createElement("div");
+    row.className = `folder-row${folder.id === state.activeFolderId ? " active" : ""}`;
+
+    const button = document.createElement("button");
+    button.className = "folder-main";
+    button.type = "button";
+    button.innerHTML = "<strong></strong><span></span>";
+    button.children[0].textContent = folder.name;
+    button.children[1].textContent = `${noteCountForFolder(folder.id)} 篇`;
+    button.addEventListener("click", () => selectFolder(folder.id));
+    row.append(button);
+
+    if (!folder.locked) {
+      const rename = document.createElement("button");
+      rename.className = "folder-action";
+      rename.type = "button";
+      rename.textContent = "改";
+      rename.title = "重命名文件夹";
+      rename.addEventListener("click", () => renameFolder(folder.id));
+      row.append(rename);
+
+      const remove = document.createElement("button");
+      remove.className = "folder-action danger";
+      remove.type = "button";
+      remove.textContent = "删";
+      remove.title = "删除文件夹";
+      remove.addEventListener("click", () => deleteFolder(folder.id));
+      row.append(remove);
+    }
+
+    els.foldersList.append(row);
+  }
 }
 
 function renderSortTabs() {
@@ -150,29 +217,61 @@ function renderEditor() {
   els.titleInput.disabled = !hasNote;
   els.contentInput.disabled = !hasNote;
   els.deleteNoteBtn.disabled = !hasNote;
+  els.folderSelect.disabled = !hasNote;
+
+  els.folderSelect.innerHTML = "";
+  const unfiled = document.createElement("option");
+  unfiled.value = "";
+  unfiled.textContent = "未归档";
+  els.folderSelect.append(unfiled);
+  for (const folder of state.folders) {
+    const option = document.createElement("option");
+    option.value = folder.id;
+    option.textContent = folder.name;
+    els.folderSelect.append(option);
+  }
 
   if (!note) {
     els.titleInput.value = "";
     els.contentInput.value = "";
     els.saveState.textContent = "";
+    els.folderSelect.value = "";
     return;
   }
 
   els.titleInput.value = note.title;
   els.contentInput.value = note.content;
+  els.folderSelect.value = note.folderId || "";
   els.saveState.textContent = state.dirty ? "未保存" : "已保存";
 }
 
 function render() {
+  renderFolders();
   renderSortTabs();
   renderNotes();
   renderEditor();
 }
 
 async function loadNotes() {
-  const data = await api("/api/notes");
-  state.notes = data.notes;
+  const [notesData, foldersData] = await Promise.all([api("/api/notes"), api("/api/folders")]);
+  state.notes = notesData.notes;
+  state.folders = foldersData.folders;
+  if (!["all", "unfiled"].includes(state.activeFolderId) && !folderById(state.activeFolderId)) {
+    state.activeFolderId = "all";
+    localStorage.setItem("activeFolderId", state.activeFolderId);
+  }
   state.activeId = visibleNotes()[0]?.id || null;
+  state.dirty = false;
+  render();
+}
+
+function selectFolder(id) {
+  if (state.dirty) saveActiveNote();
+  state.activeFolderId = id;
+  localStorage.setItem("activeFolderId", id);
+  if (!visibleNotes().some((note) => note.id === state.activeId)) {
+    state.activeId = visibleNotes()[0]?.id || null;
+  }
   state.dirty = false;
   render();
 }
@@ -189,7 +288,7 @@ function selectNote(id) {
 async function createNote() {
   const data = await api("/api/notes", {
     method: "POST",
-    body: JSON.stringify({ title: "未命名笔记", content: "" })
+    body: JSON.stringify({ title: "未命名笔记", content: "", folderId: currentFolderForNewNote() })
   });
   state.notes = [data.note, ...state.notes];
   state.activeId = data.note.id;
@@ -220,7 +319,7 @@ async function saveActiveNote() {
   try {
     const data = await api(`/api/notes/${note.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ title: note.title, content: note.content })
+      body: JSON.stringify({ title: note.title, content: note.content, folderId: note.folderId || null })
     });
     const index = state.notes.findIndex((item) => item.id === note.id);
     if (index >= 0) {
@@ -252,6 +351,75 @@ function setSortBy(sortBy) {
   state.sortBy = sortBy;
   localStorage.setItem("noteSortBy", sortBy);
   render();
+}
+
+async function createFolder() {
+  const name = window.prompt("新文件夹名称");
+  if (!name || !name.trim()) return;
+  try {
+    const data = await api("/api/folders", {
+      method: "POST",
+      body: JSON.stringify({ name })
+    });
+    state.folders = [...state.folders, data.folder].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+    selectFolder(data.folder.id);
+  } catch (error) {
+    window.alert(error.message);
+  }
+}
+
+async function renameFolder(folderId) {
+  const folder = folderById(folderId);
+  if (!folder) return;
+  const name = window.prompt("文件夹名称", folder.name);
+  if (!name || !name.trim() || name.trim() === folder.name) return;
+  try {
+    const data = await api(`/api/folders/${folderId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name })
+    });
+    state.folders = state.folders
+      .map((item) => (item.id === folderId ? data.folder : item))
+      .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+    render();
+  } catch (error) {
+    window.alert(error.message);
+  }
+}
+
+async function deleteFolder(folderId) {
+  const folder = folderById(folderId);
+  if (!folder) return;
+  const ok = window.confirm(`删除文件夹「${folder.name}」？其中的笔记会移到“未归档”。`);
+  if (!ok) return;
+  try {
+    await api(`/api/folders/${folderId}`, { method: "DELETE" });
+    state.folders = state.folders.filter((item) => item.id !== folderId);
+    state.notes = state.notes.map((note) => (note.folderId === folderId ? { ...note, folderId: null } : note));
+    if (state.activeFolderId === folderId) {
+      state.activeFolderId = "all";
+      localStorage.setItem("activeFolderId", state.activeFolderId);
+    }
+    if (!visibleNotes().some((note) => note.id === state.activeId)) {
+      state.activeId = visibleNotes()[0]?.id || null;
+    }
+    render();
+  } catch (error) {
+    window.alert(error.message);
+  }
+}
+
+async function changeActiveNoteFolder() {
+  const note = activeNote();
+  if (!note) return;
+  note.folderId = els.folderSelect.value || null;
+  note.updatedAt = new Date().toISOString();
+  state.activeFolderId = note.folderId || "unfiled";
+  localStorage.setItem("activeFolderId", state.activeFolderId);
+  els.saveState.textContent = "保存中";
+  renderFolders();
+  renderNotes();
+  await saveActiveNote();
 }
 
 async function submitAuth(event) {
@@ -298,8 +466,10 @@ async function bootstrap() {
   els.logoutBtn.addEventListener("click", logout);
   els.newNoteBtn.addEventListener("click", createNote);
   els.emptyNewNoteBtn.addEventListener("click", createNote);
+  els.newFolderBtn.addEventListener("click", createFolder);
   els.searchInput.addEventListener("input", renderNotes);
   els.sortTabs.forEach((tab) => tab.addEventListener("click", () => setSortBy(tab.dataset.sort)));
+  els.folderSelect.addEventListener("change", changeActiveNoteFolder);
   els.titleInput.addEventListener("input", scheduleSave);
   els.contentInput.addEventListener("input", scheduleSave);
   els.deleteNoteBtn.addEventListener("click", deleteActiveNote);

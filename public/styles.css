@@ -241,6 +241,102 @@ label input {
   box-shadow: none;
 }
 
+.folders-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.panel-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mini-btn {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #eef4f1;
+  color: var(--accent-dark);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mini-btn:hover {
+  background: #dcece7;
+}
+
+.folders-list {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.folder-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.folder-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.folder-main strong,
+.folder-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-main strong {
+  font-size: 13px;
+}
+
+.folder-main span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.folder-row:hover .folder-main,
+.folder-row.active .folder-main {
+  border-color: var(--line);
+  background: #fff;
+}
+
+.folder-action {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: #eef4f1;
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.folder-action.danger {
+  background: #fff1ef;
+  color: var(--danger);
+}
+
 .sort-box {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -384,6 +480,15 @@ label input {
   gap: 12px;
 }
 
+.folder-select {
+  width: 150px;
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .save-state {
   min-width: 58px;
   color: var(--muted);
@@ -471,10 +576,15 @@ label input {
 
   .toolbar-actions {
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .title-input {
     font-size: 22px;
+  }
+
+  .folder-select {
+    width: min(100%, 180px);
   }
 
   .content-input {

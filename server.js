@@ -29,7 +29,7 @@ async function ensureDb() {
   } catch {
     await fs.writeFile(
       DB_FILE,
-      JSON.stringify({ users: [], sessions: [], notes: [] }, null, 2)
+      JSON.stringify({ users: [], sessions: [], notes: [], folders: [] }, null, 2)
     );
   }
 }
@@ -37,7 +37,15 @@ async function ensureDb() {
 async function readDb() {
   await ensureDb();
   const raw = await fs.readFile(DB_FILE, "utf8");
-  return JSON.parse(raw);
+  const db = JSON.parse(raw);
+  db.users ||= [];
+  db.sessions ||= [];
+  db.notes ||= [];
+  db.folders ||= [];
+  for (const note of db.notes) {
+    if (note.folderId === undefined) note.folderId = null;
+  }
+  return db;
 }
 
 async function writeDb(db) {
@@ -149,9 +157,23 @@ function validateAuthInput(email, password) {
   return null;
 }
 
+function normalizeFolderName(name) {
+  return String(name || "").trim().slice(0, 60);
+}
+
+function folderPayload(folder) {
+  return {
+    id: folder.id,
+    name: folder.name,
+    createdAt: folder.createdAt,
+    updatedAt: folder.updatedAt
+  };
+}
+
 function notePayload(note) {
   return {
     id: note.id,
+    folderId: note.folderId || null,
     title: note.title,
     content: note.content,
     createdAt: note.createdAt,
@@ -217,6 +239,76 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, { ok: true }, { "Set-Cookie": sessionCookie("", 0) });
   }
 
+  if (url.pathname.startsWith("/api/folders")) {
+    const user = await getCurrentUser(req);
+    if (!user) return sendJson(res, 401, { error: "请先登录。" });
+
+    if (req.method === "GET" && url.pathname === "/api/folders") {
+      const db = await readDb();
+      const folders = db.folders
+        .filter((folder) => folder.userId === user.id)
+        .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
+        .map(folderPayload);
+      return sendJson(res, 200, { folders });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/folders") {
+      const body = await readBody(req);
+      const name = normalizeFolderName(body.name);
+      if (!name) return sendJson(res, 400, { error: "请输入文件夹名称。" });
+
+      return updateDb((db) => {
+        const duplicate = db.folders.some((folder) => folder.userId === user.id && folder.name === name);
+        if (duplicate) return sendJson(res, 409, { error: "文件夹名称已存在。" });
+        const now = new Date().toISOString();
+        const folder = {
+          id: randomId(),
+          userId: user.id,
+          name,
+          createdAt: now,
+          updatedAt: now
+        };
+        db.folders.push(folder);
+        return sendJson(res, 201, { folder: folderPayload(folder) });
+      });
+    }
+
+    const match = url.pathname.match(/^\/api\/folders\/([a-f0-9]+)$/);
+    if (!match) return sendJson(res, 404, { error: "接口不存在。" });
+    const folderId = match[1];
+
+    if (req.method === "PATCH") {
+      const body = await readBody(req);
+      const name = normalizeFolderName(body.name);
+      if (!name) return sendJson(res, 400, { error: "请输入文件夹名称。" });
+
+      return updateDb((db) => {
+        const folder = db.folders.find((item) => item.id === folderId && item.userId === user.id);
+        if (!folder) return sendJson(res, 404, { error: "文件夹不存在。" });
+        const duplicate = db.folders.some((item) => item.userId === user.id && item.id !== folderId && item.name === name);
+        if (duplicate) return sendJson(res, 409, { error: "文件夹名称已存在。" });
+        folder.name = name;
+        folder.updatedAt = new Date().toISOString();
+        return sendJson(res, 200, { folder: folderPayload(folder) });
+      });
+    }
+
+    if (req.method === "DELETE") {
+      return updateDb((db) => {
+        const folder = db.folders.find((item) => item.id === folderId && item.userId === user.id);
+        if (!folder) return sendJson(res, 404, { error: "文件夹不存在。" });
+        db.folders = db.folders.filter((item) => item.id !== folderId);
+        for (const note of db.notes) {
+          if (note.userId === user.id && note.folderId === folderId) {
+            note.folderId = null;
+            note.updatedAt = new Date().toISOString();
+          }
+        }
+        return sendJson(res, 200, { ok: true });
+      });
+    }
+  }
+
   if (url.pathname.startsWith("/api/notes")) {
     const user = await getCurrentUser(req);
     if (!user) return sendJson(res, 401, { error: "请先登录。" });
@@ -235,9 +327,14 @@ async function handleApi(req, res, url) {
       return updateDb((db) => {
         const now = new Date().toISOString();
         const title = String(body.title || "未命名笔记").trim().slice(0, 120) || "未命名笔记";
+        const folderId = body.folderId || null;
+        if (folderId && !db.folders.some((folder) => folder.id === folderId && folder.userId === user.id)) {
+          return sendJson(res, 400, { error: "文件夹不存在。" });
+        }
         const note = {
           id: randomId(),
           userId: user.id,
+          folderId,
           title,
           content: String(body.content || ""),
           createdAt: now,
@@ -269,6 +366,13 @@ async function handleApi(req, res, url) {
         }
         if (body.content !== undefined) {
           note.content = String(body.content || "");
+        }
+        if (body.folderId !== undefined) {
+          const folderId = body.folderId || null;
+          if (folderId && !db.folders.some((folder) => folder.id === folderId && folder.userId === user.id)) {
+            return sendJson(res, 400, { error: "文件夹不存在。" });
+          }
+          note.folderId = folderId;
         }
         note.updatedAt = new Date().toISOString();
         return sendJson(res, 200, { note: notePayload(note) });
